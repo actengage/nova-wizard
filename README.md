@@ -1,8 +1,8 @@
 # Laravel Nova Wizard
 
 Turn your long and complex resource forms into clean multi-step process. This
-package was designed to change as little about Nova as possible. It works by
-injecting
+package was designed to change as little about Nova as possible. Just 
+implement the trait, define the steps and the plugin does the rest.
 
 ![Screenshot](./screenshot.gif?raw=true)
 
