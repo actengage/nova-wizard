@@ -7,7 +7,8 @@
     ],
     "license": "MIT",
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1.0",
+        "laravel/nova": "^3.25"
     },
     "autoload": {
         "psr-4": {
@@ -20,5 +21,11 @@
                 "Actengage\\Wizard\\FieldServiceProvider"
             ]
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://nova.laravel.com"
+        }
+    ]
 }

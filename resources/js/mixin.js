@@ -208,7 +208,7 @@ export default (Nova, Vue) => ({
                 try {
                     await this.validateStep();
 
-                    await this.submitMultiStepForm();
+                    await this.submitMultiStepForm(false);
                 }
                 catch (e) {
                     this.validateRequestFailed(e);
@@ -361,7 +361,7 @@ export default (Nova, Vue) => ({
             this.subject.validationErrors = new Errors();
         },
 
-        async submitMultiStepForm() {
+        async submitMultiStepForm(shouldRedirect = true) {
             const {
                 data: {
                     redirect
@@ -376,7 +376,7 @@ export default (Nova, Vue) => ({
                 })
             );
 
-            this.$router.push({ path: redirect }, () => {
+            shouldRedirect && this.$router.push({ path: redirect }, () => {
                 window.scrollTo(0, 0);
             });
         },
