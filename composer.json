@@ -20,8 +20,5 @@
                 "Actengage\\Wizard\\FieldServiceProvider"
             ]
         }
-    },
-    "config": {
-        "sort-packages": true
     }
 }
