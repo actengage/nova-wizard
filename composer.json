@@ -1,6 +1,6 @@
 {
     "name": "actengage/nova-wizard",
-    "description": "Turn your long and complex resource forms into clean multi-step process.",
+    "description": "Turn your long and complex resource forms into a simple and clean multi-step process.",
     "keywords": [
         "laravel",
         "nova"
