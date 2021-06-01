@@ -1,6 +1,6 @@
 {
     "name": "actengage/nova-wizard",
-    "description": "A Laravel Nova field.",
+    "description": "Turn your long and complex resource forms into clean multi-step process.",
     "keywords": [
         "laravel",
         "nova"
