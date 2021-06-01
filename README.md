@@ -90,13 +90,12 @@ class User extends Resource
 
 ## Display Steps as Panels
 
-
-![Display as panel with toolbar](./screenshot-2.png?raw=true)
-
 Sometimes you want your steps to be displayed as panels without having to 
 redundant define a panel inside a step. To do this, just use the
 `displayasPanel()` method. Additionally, if you want to control where the
 toolbar is displayed, you can use the `withToolbar()` method just like a panel.
+
+![Display as panel with toolbar](./screenshot-2.png?raw=true)
 
 ``` php
 Step::make('Name & Email', [
