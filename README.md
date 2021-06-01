@@ -4,6 +4,8 @@ Turn your long and complex resource forms into clean multi-step process. This
 package was designed to change as little about Nova as possible. It works by
 injecting
 
+![Screenshot](./screenshot.gif?raw=true)
+
 ## Installation
 
 ```
