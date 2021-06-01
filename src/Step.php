@@ -43,18 +43,33 @@ class Step extends Panel
     {
         return collect($this->data)
             ->reduce(function($carry, $item) {
-                if($item instanceof Panel) {
-                    return $carry->merge(array_filter($item->data, function($item) {
-                        return $item instanceof Field;
-                    }));
-                }
+                return $this->mergeFields($carry, $item);
+            }, new FieldCollection)
+            ->filter(function(Field $item) {
+                return $item->showOnCreation || $item->showOnUpdate;
+            });
+    }
 
-                if($item instanceof Field) {
-                    return $carry->merge([$item]);
-                }
+    /**
+     * Merge the data recursively into the collection.
+     * 
+     * @param  Laravel\Nova\Fields\FieldCollection  $collection
+     * @param  Laravel\Nova\Fields\Field|Laravel\Nova\Panel  $data
+     * @return Laravel\Nova\Fields\FieldCollection
+     */
+    protected function mergeFields(FieldCollection $collection, $data): FieldCollection
+    {
+        if($data instanceof Field) {
+            return $collection->merge([$data]);
+        }
 
-                return $carry;
-            }, new FieldCollection);
+        if($data instanceof Panel) {
+            foreach($data as $item) {
+                $this->mergeFields($collection, $item);        
+            }
+        }
+
+        return $collection;
     }
 
     /**

@@ -132,7 +132,9 @@ trait HasMultipleSteps
             $steps->prepend(new Step(null, $defaultFields->all()));
         }        
         
-        return $steps->values();
+        return $steps->filter(function(Step $step) {
+            return $step->fields()->count();
+        })->values();
     }
 
     /**
