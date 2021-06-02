@@ -2,6 +2,8 @@
 
 namespace Actengage\Wizard;
 
+use Illuminate\Contracts\Support\Arrayable;
+use JsonSerializable;
 use Laravel\Nova\Fields\Field;
 use Laravel\Nova\Fields\FieldCollection;
 use Laravel\Nova\Panel;
@@ -28,10 +30,18 @@ class Step extends Panel
      * @param  string|null  $name
      * @param  array  $data
      */
-    public function __construct(?string $name, array $data = [])
+    public function __construct(?string $name, $data = [])
     {
         $this->name = $name;
-        $this->data = $data;
+
+        if($data instanceof Arrayable) {
+            $data = $data->toArray();
+        }
+        else if($data instanceof JsonSerializable) {
+            $data = $data->jsonSerialize();
+        }
+        
+        $this->data = (array) $data;
     }
 
     /**
@@ -54,7 +64,7 @@ class Step extends Panel
      * Merge the data recursively into the collection.
      * 
      * @param  Laravel\Nova\Fields\FieldCollection  $collection
-     * @param  Laravel\Nova\Fields\Field|Laravel\Nova\Panel  $data
+     * @param  Laravel\Nova\Fields\Field|Laravel\Nova\Fields\FieldCollection   $data
      * @return Laravel\Nova\Fields\FieldCollection
      */
     protected function mergeFields(FieldCollection $collection, $data): FieldCollection
