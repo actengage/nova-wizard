@@ -2,13 +2,24 @@
 
 namespace Actengage\Wizard;
 
-use Actengage\Wizard\Http\Middleware\SetHeadersForJsonResponse;
+use Actengage\Wizard\Http\Controllers\ValidateStepController;
+use Actengage\Wizard\Http\Middleware\AttachHeadersToResponse;
+use Actengage\Wizard\Http\Requests\ValidateStepRequest;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
-use Laravel\Nova\Events\ServingNova;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Routing\Router;
+use Laravel\Nova\Events\NovaServiceProviderRegistered;
+use Laravel\Nova\Http\Controllers\CreationFieldController;
+use Laravel\Nova\Http\Controllers\UpdateFieldController;
+use Laravel\Nova\Http\Requests\CreateResourceRequest;
+use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Nova;
+use League\Flysystem\Filesystem;
 
 class FieldServiceProvider extends ServiceProvider
 {
@@ -18,16 +29,25 @@ class FieldServiceProvider extends ServiceProvider
      * @return void
      */
     public function boot(Kernel $kernel)
-    {        
-        $kernel->pushMiddleware(SetHeadersForJsonResponse::class);
+    {       
+        $this->app->afterResolving(NovaRequest::class, function ($request, $app) {
+            $controller = app(Router::class)
+                ->getRoutes()
+                ->match($request)
+                ->getController();
 
-        $this->app->booted(function () {
-            $this->routes();
+            switch(get_class($controller)) {
+                case UpdateFieldController::class:
+                case CreationFieldController::class:
+                case FillStepController::class:
+                case ValidateStepController::class:
+                    app('wizard.session')->restore($request);        
+            }
         });
-        
-        Nova::serving(function (ServingNova $event) {
-            Nova::script('wizard', __DIR__.'/../dist/js/field.js');
-        });
+
+        $kernel->pushMiddleware(AttachHeadersToResponse::class);
+
+        $this->bootOnlyForConsole();
     }
 
     /**
@@ -37,23 +57,114 @@ class FieldServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->registerWizardSession();
+
+        Nova::booted(function($event) {
+            $this->registerFilesystemDisk();
+            $this->registerRoutes();
+
+            Nova::serving(function() {
+                $this->bootedAndServing();
+            });
+        });
+
+        if (!$this->app->configurationIsCached()) {
+            $this->mergeConfigFrom(
+                __DIR__.'/../config/wizard.php', 'wizard'
+            );
+        }
+        
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'wizard');
     }
 
     /**
-     * Register the tool's routes.
+     * Register the routes.
      *
      * @return void
      */
-    protected function routes()
+    protected function registerRoutes()
     {
-        if ($this->app->routesAreCached()) {
+        if($this->app->routesAreCached()) {
             return;
         }
 
         Route::middleware(['nova'])
-            ->namespace('\\Actengage\\Wizard\\Http\\Controllers')
-            ->prefix('nova-vendor/wizard')
             ->group(__DIR__.'/../routes/api.php');
+    }
+
+    /**
+     * After Nova has booted and has began serving.
+     *
+     * @return void
+     */
+    protected function bootedAndServing()
+    {
+        Nova::script('wizard', __DIR__.'/../dist/js/field.js');
+    }
+
+    /**
+     * Register a local file disk for the wizard sessions.
+     * 
+     * @return void;
+     */
+    protected function registerFilesystemDisk()
+    {
+        $adapter = $this->app->get('filesystem')->createLocalDriver([
+            'root' => storage_path('wizard'),
+            'permissions' => [
+                'file' => [
+                    'public' => 0664,
+                    'private' => 0600,
+                ],
+                'dir' => [
+                    'public' => 0775,
+                    'private' => 0700,
+                ],
+            ]
+        ]);
+        
+        $this->app->get('filesystem')->set('wizard', $adapter);
+
+        $this->app->singleton('wizard.filesystem', function() use ($adapter) {
+            return $adapter;
+        });
+        
+        $this->app->singleton('wizard.disk', function() {
+            $this->app->get('filesystem')->disk(config('wizard.disk'));    
+        });
+    }
+
+    /**
+     * Register the wizard session.
+     * 
+     * @return void
+     */
+    protected function registerWizardSession()
+    {
+        $this->app->singleton('wizard.session.id', function($app) {
+            return config('wizard.session.model')::id();
+        });
+
+        $this->app->singleton('wizard.session', function($app) {
+            return config('wizard.session.model')::request();
+        });
+    }
+
+    /**
+     * Boot only for the console.
+     * 
+     * @return void
+     */
+    protected function bootOnlyForConsole()
+    {
+        if(!$this->app->runningInConsole()) {
+            return;
+        }
+
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        
+        $this->publishes([
+            __DIR__.'/../config/wizard.php' => config_path('wizard.php'),
+        ]);
     }
 }

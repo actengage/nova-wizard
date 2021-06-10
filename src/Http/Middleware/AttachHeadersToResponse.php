@@ -6,6 +6,7 @@ use Actengage\Wizard\HasMultipleSteps;
 use Actengage\Wizard\Http\Controllers\ValidateStepController;
 use Closure;
 use Illuminate\Http\JsonResponse;
+use throwable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Laravel\Nova\Http\Controllers\CreationFieldController;
@@ -14,9 +15,8 @@ use Laravel\Nova\Http\Controllers\ResourceUpdateController;
 use Laravel\Nova\Http\Controllers\UpdateFieldController;
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Resource;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-class SetHeadersForJsonResponse
+class AttachHeadersToResponse
 {
     /**
      * The resource found in the request.
@@ -33,23 +33,44 @@ class SetHeadersForJsonResponse
      */
     public function handle(Request $request, Closure $next)
     {
-        // Execute the middleware so we can manipulate the response.
+        // Get the response and throw any errors before continuing.
         $response = $next($request);
-        
+
+        // Check for anything other than a JsonResponse and return it.
+        if(!($response instanceof JsonResponse)) {
+            return $response;
+        }
+
         // Convert the request to a nova request instance.
-        $request = NovaRequest::createFrom($request);
+        $novaRequest = NovaRequest::createFrom($request);
 
         // Check to see if the headers need to be attached.
-        if($this->shouldAttachHeaders($request)) {
+        if($this->shouldAttachHeaders($novaRequest)) {
             if(!$this->resource) {
-                $this->resource = $request->newResource();
+                $this->resource = $novaRequest->newResource();
             }
-
-            $request->merge($this->resource->model()->toArray());
             
+            // Attach the headers to the response
             $this->attachHeadersToResponse(
-                $this->resource, $request, $response
+                $this->resource, $novaRequest, $response
             );
+
+            // Get the model from the resource.
+            $model = $this->resource->model();
+            
+            if(app('wizard.session')->isDirty()) {
+                $model = $this->resource->model();
+
+                // Merge the request back to the session and save.
+                app('wizard.session')
+                    ->merge($novaRequest)
+                    ->associateModel($model)
+                    ->associateUser(auth()->user())
+                    ->save();
+                
+                // Restore the session back into the request instance.
+                app('wizard.session')->restore($request);
+            }
         }
 
         return $response;
@@ -64,14 +85,14 @@ class SetHeadersForJsonResponse
      */
     protected function attachHeadersToResponse(Resource $resource, NovaRequest $request, $response)
     {
-        $response->header('has-multiple-steps', 1);
+        $response->header(config('wizard.session.header'), app('wizard.session')->id);
         $response->header('wizard-current-step', $resource->currentStep($request));
         $response->header('wizard-total-steps', $resource->totalSteps($request));
         
         if($this->checkControllerClass($request, [
             CreationFieldController::class,
             UpdateFieldController::class,
-        ])) {                
+        ])) {
             $data = $response->getData();
             $data->steps = $this->resource
                 ->steps($request)
@@ -105,14 +126,14 @@ class SetHeadersForJsonResponse
      */
     protected function shouldAttachHeaders(Request $request): bool
     {
-        if($this->checkControllerClass($request, [
-            ResourceStoreController::class,
-            ResourceUpdateController::class,
-            CreationFieldController::class,
-            UpdateFieldController::class,
-            ValidateStepController::class
-        ])) {
-            try {
+        try {
+            if($this->checkControllerClass($request, [
+                ResourceStoreController::class,
+                ResourceUpdateController::class,
+                CreationFieldController::class,
+                UpdateFieldController::class,
+                ValidateStepController::class
+            ])) {
                 $this->resource = $request->resourceId
                     ? $request->findResourceOrFail($request->resourceId)
                     : $request->newResource();
@@ -121,9 +142,9 @@ class SetHeadersForJsonResponse
                     return true;
                 }
             }
-            catch(NotFoundHttpException $e) {
-                // Ignore the exception...
-            }
+        }
+        catch(throwable $e) {
+            // Ignore the exception...
         }
         
         return false;

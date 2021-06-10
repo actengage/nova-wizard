@@ -1,14 +1,13 @@
 import mixin from './mixin';
 
 Nova.booting((Vue, router, store) => {
-    // Register the components.  
-    Vue.component('IndexWizard', require('./components/IndexField'));
-    Vue.component('DetailWizard', require('./components/DetailField'));
-    Vue.component('FormWizard', require('./components/FormField'));
- 
+    let isWizardInstance = false;
+    
     // Add a request interceptor to append to current step to the request
     Nova.request().interceptors.request.use(function(config) {
         const step = parseInt(router.currentRoute.query.step || 1);
+
+        config.step = step;
 
         if(config.method === 'get') {
             config.params = Object.assign(config.params || {}, { step });
@@ -17,11 +16,17 @@ Nova.booting((Vue, router, store) => {
             config.data.set('step', step);
         }
     
+        if(isWizardInstance) {
+            Nova.$emit('nova.wizard.request', config);
+        }
+        
         return config;
     });
     
     Nova.request().interceptors.response.use(response => {
-        Nova.$emit('nova.http.response', response);
+        if(isWizardInstance) {
+            Nova.$emit('nova.wizard.response', response);
+        }
 
         return response;
     });
@@ -35,6 +40,9 @@ Nova.booting((Vue, router, store) => {
             }
         } = to;
 
+        // Make sure the wizard instance is always false.
+        isWizardInstance = false;
+
         // Only add mixin if route has a resourceId, resourceName, and on first load
         if(resourceName && (name === 'create' || name === 'edit') && matched.components.default.mixins.indexOf(mixin) === -1) {
             if(matched.components.default.computed && matched.components.default.computed.updateResourceFormData) {
@@ -43,12 +51,11 @@ Nova.booting((Vue, router, store) => {
                     function(fn) {
                         const originalData = fn.call(this);
 
-                        if(this.hasMultipleSteps) {
+                        if(this.sessionId) {
                             const formData = this.getFormData();
 
                             formData.set('_method', originalData.get('_method'));
-                            // formData.set('_retrieved_at', );
-
+                            
                             return formData;
                         }
 
@@ -57,6 +64,10 @@ Nova.booting((Vue, router, store) => {
                 );
             }
 
+            // If we make it to this point, we know its a wizard instance.
+            isWizardInstance = true;
+
+            // Push the mixin into the default component.
             matched.components.default.mixins.push(mixin(Nova, Vue));
         }
         

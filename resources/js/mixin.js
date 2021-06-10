@@ -1,3 +1,4 @@
+import deepDiff from 'deep-diff';
 import { Errors } from 'laravel-nova';
 import FillFormFields from './components/FillFormFields';
 import ProgressBar from './components/ProgressBar';
@@ -11,10 +12,11 @@ export default (Nova, Vue) => ({
     data() {
         return {
             currentStep: null,
+            events: [],
             fillComponent: null,
             formData: {},
             fieldData: {},
-            hasMultipleSteps: null,
+            sessionId: null,
             steps: null,
             nextButton: null,
             prevButton: null,
@@ -35,22 +37,15 @@ export default (Nova, Vue) => ({
             }
         },
 
-        currentStep(value) {
-            if(!this.fieldData[value]) {
-                this.fieldData[value] = {};
-            }
-        },
-
         ['subject.fields'](fields) {
-            _.each(fields, field => {
-                const fieldData = this.fieldData[this.currentStep] || {};
-
-                const { attribute } = field;
-                
-                if(!(fieldData[attribute] === undefined || fieldData[attribute] === null)) {
-                    field.value = fieldData[attribute];
+            _.each(fields, (field, i) => {
+                if(this.fieldData[field.attribute]) {
+                    Object.assign(field, this.fieldData[field.attribute], {
+                        panel: field.panel
+                    });
                 }
             });
+
         },
 
         submittedViaNextButton(value) {
@@ -174,7 +169,6 @@ export default (Nova, Vue) => ({
 
                 try {
                     await this.validateStep();
-
                     await this.submitMultiStepForm();
                 }
                 catch (e) {
@@ -207,7 +201,6 @@ export default (Nova, Vue) => ({
 
                 try {
                     await this.validateStep();
-
                     await this.submitMultiStepForm(false);
                 }
                 catch (e) {
@@ -247,13 +240,22 @@ export default (Nova, Vue) => ({
 
                 const uri = `/nova-vendor/wizard/fill/${this.resourceName}${this.resourceId ? `/${this.resourceId}` : ''}`;
 
-                const { data: { fields } } = await Nova.request().post(uri, formData);
+                try {
+                    await this.validateStep();
+                }
+                catch (e) {
+                    this.validateRequestFailed(e);
+                }
+
+                // const { data: { fields } } = await Nova.request().post(uri, formData);
             
+                /*
                 fields.forEach(({ attribute, value }) => {
                     this.fieldData[this.currentStep][attribute] = !(
                         value === null || value === undefined
                     ) ? value : '';
                 });
+                */
 
                 this.$router.push({
                     query: {
@@ -329,9 +331,7 @@ export default (Nova, Vue) => ({
                     });
                 }
                 else {
-                    const {
-                        data: { redirect },
-                    } = await this.submitMultiStepForm();
+                    await this.submitMultiStepForm();
                 }
             }
             catch (e) {
@@ -354,8 +354,8 @@ export default (Nova, Vue) => ({
 
             const { data: { fields } } = await Nova.request().post(uri, formData);
                 
-            fields.forEach(({ attribute, value }) => {
-                this.fieldData[this.currentStep][attribute] = value;
+            fields.forEach(field => {
+                this.fieldData[field.attribute] = field;
             });
     
             this.subject.validationErrors = new Errors();
@@ -405,42 +405,72 @@ export default (Nova, Vue) => ({
                     )
                 );
             }
-        }
+        },
+
+        on(key, fn) {
+            const handler = (...args) => {
+                fn(...args);
+            };
+
+            this.events.push({
+                key, handler
+            });
+
+            Nova.$on(key, handler);
+        },
+
+        once(key, fn) {
+            const handler = (...args) => {
+                fn(...args);
+            };
+            
+            this.events.push({
+                key, handler
+            });
+
+            Nova.$once(key, handler);
+        },
+    },
+
+    destroyed() {
+        this.events.forEach(({ key, handler }) => Nova.$off(key, handler));
     },
 
     created() {
+        this.on('nova.wizard.request', config => {
+            if(this.sessionId) {
+                config.headers['wizard-session-id'] = this.sessionId;
+            }
+        });
+
         // These events are broken apart to be executed in specific orders.
-        Nova.$once('nova.http.response', () => {
+        this.once('nova.wizard.response', () => {
             this.subject = this.$children[0]
                 && this.$children[0].submitViaCreateResource
                 ? this.$children[0]
                 : this;
+
+            this.subject.createResourceFormData = () => this.getFormData();
+            this.subject.submitViaCreateResource = async(e) => this.submitViaNextButton(e);
+            this.subject.submitViaUpdateResource = async(e) => this.submitViaNextButton(e);
+            this.resourceInformation = this.subject.resourceInformation;       
+
+            this.$watch(() => this.subject.loading, () => {
+                this.initialize();
+            });
         });
 
-        Nova.$on('nova.http.response', ({ data: { fields, steps }, headers }) => {
-            if(this.hasMultipleSteps = Boolean(headers['has-multiple-steps'])) {   
+        this.on('nova.wizard.response', ({ data: { steps }, headers }) => {
+            if(headers['wizard-session-id']) {
+                this.sessionId = headers['wizard-session-id'];
                 this.currentStep = Number(headers['wizard-current-step']);
-                this.totalSteps = Number(headers['wizard-total-steps']);  
+                this.totalSteps = Number(headers['wizard-total-steps']);
+
 
                 if(steps) {
                     this.steps = steps;
                 }
             }
-        });
-
-        Nova.$once('nova.http.response', () => {
-            if(!this.hasMultipleSteps) {
-                return;
-            }
-
-            this.subject.createResourceFormData = () => this.getFormData();
-            this.subject.submitViaCreateResource = async(e) => this.submitViaNextButton(e);
-            this.subject.submitViaUpdateResource = async(e) => this.submitViaNextButton(e);        
-            this.resourceInformation = this.subject.resourceInformation;
-                
-            this.$watch(() => this.subject.loading, () => {
-                this.initialize();
-            });
         });
     }
 });

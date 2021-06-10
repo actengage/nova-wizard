@@ -19,6 +19,14 @@ use Laravel\Nova\ResourceToolElement;
 trait HasMultipleSteps
 {
     /**
+     * Get all of the resources's sessions.
+     */
+    public function sessions()
+    {
+        return $this->morphMany(Session::class, 'model');
+    }
+
+    /**
      * Get the fields that are available for the given request.
      *
      * @param  \Laravel\Nova\Http\Requests\NovaRequest  $request
@@ -60,7 +68,7 @@ trait HasMultipleSteps
      */
     public function currentStep(NovaRequest $request): int
     {
-        return (int) $request->input('step', 1);
+        return min((int) $request->input('step', 1), $this->totalSteps($request));
     }  
     
     /**
@@ -190,4 +198,5 @@ trait HasMultipleSteps
     {
         return $this->steps($request)->count();
     }
+
 }

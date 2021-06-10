@@ -2,30 +2,38 @@
 
 namespace Actengage\Wizard\Http\Controllers;
 
+use Actengage\Wizard\Http\Requests\ValidateStepRequest;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
-use Laravel\Nova\Fields\FieldCollection;
-use Laravel\Nova\Http\Requests\NovaRequest;
+use Laravel\Nova\Panel;
 
 class ValidateStepController extends Controller
 {
-    public function handle(NovaRequest $request)
+    public function handle(ValidateStepRequest $request)
     { 
-        if($request->resourceId) {
-            $resource = $request->newResourceWith(
-                $model = $request->findModelQuery()->firstOrFail()
-            );
+        return !$request->resourceId
+             ? $this->validateCreateRequest($request)
+             : $this->validateUpdateRequest($request);
+    }
 
-            $resource::validateForUpdate($request, $resource);
-            $resource->fillForUpdate($request, $model);
-        }
-        else {
-            $resource = $request->newResource();
-            $resource::validateForCreation($request);
-            $resource->fill($request, $model = $resource->model());
-        }
+    protected function validateCreateRequest(ValidateStepRequest $request)
+    {
+        $request->resource::validateForCreation($request, $request->resource);
+        $request->resource->fill($request, $request->model);
 
-        return $resource;
+        return response()->json([
+            'fields' => $request->resource->creationFieldsWithinPanels($request, $request->resource),
+            'panels' => $request->resource->availablePanelsForCreate($request, $request->resource),
+        ]);
+    }
+
+    protected function validateUpdateRequest(ValidateStepRequest $request)
+    {
+        $request->resource::validateForUpdate($request, $request->resource);
+        $request->resource->fillForUpdate($request, $request->model);
+
+        return response()->json([
+            'fields' => $request->resource->updateFieldsWithinPanels($request, $request->resource),
+            'panels' => $request->resource->availablePanelsForUpdate($request, $request->resource),
+        ]);
     }
 }
