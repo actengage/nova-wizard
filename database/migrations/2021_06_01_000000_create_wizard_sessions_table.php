@@ -27,7 +27,7 @@ class CreateWizardSessionsTable extends Migration
             $table->string('id', 64)->unique();
             $table->json('data');
             $table->morphs('user');
-            $table->nullableMorphs('model');
+            $table->nullableUuidMorphs('model');
             $table->timestamps();
         });
     }
