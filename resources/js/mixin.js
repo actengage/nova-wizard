@@ -236,32 +236,19 @@ export default (Nova, Vue) => ({
                 this.$root.$refs.loading.start();
                 this.prevButton.processing = true;
 
-                const formData = this.validateFormData();
-
-                const uri = `/nova-vendor/wizard/fill/${this.resourceName}${this.resourceId ? `/${this.resourceId}` : ''}`;
-
                 try {
                     await this.validateStep();
+
+                    this.$router.push({
+                        query: {
+                            step: this.currentStep - 1
+                        }
+                    });    
                 }
                 catch (e) {
                     this.validateRequestFailed(e);
+                    this.focusOnFirstError(e);
                 }
-
-                // const { data: { fields } } = await Nova.request().post(uri, formData);
-            
-                /*
-                fields.forEach(({ attribute, value }) => {
-                    this.fieldData[this.currentStep][attribute] = !(
-                        value === null || value === undefined
-                    ) ? value : '';
-                });
-                */
-
-                this.$router.push({
-                    query: {
-                        step: this.currentStep - 1
-                    }
-                });
 
                 this.prevButton.processing = false;
                 this.$root.$refs.loading.finish();
