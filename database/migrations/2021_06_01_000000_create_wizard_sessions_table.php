@@ -26,7 +26,7 @@ class CreateWizardSessionsTable extends Migration
         Schema::create($this->table, function (Blueprint $table) {
             $table->string('id', 64)->unique();
             $table->json('data');
-            $table->morphs('user');
+            $table->nullableUuidMorphs('user');
             $table->nullableUuidMorphs('model');
             $table->timestamps();
         });
