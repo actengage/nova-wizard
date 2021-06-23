@@ -24,6 +24,10 @@ Nova.booting((Vue, router, store) => {
     });
     
     Nova.request().interceptors.response.use(response => {
+        if(!isWizardInstance) {
+            isWizardInstance = !!response.headers['wizard-session-id'];
+        }
+
         if(isWizardInstance) {
             Nova.$emit('nova.wizard.response', response);
         }
@@ -63,9 +67,6 @@ Nova.booting((Vue, router, store) => {
                     }
                 );
             }
-
-            // If we make it to this point, we know its a wizard instance.
-            isWizardInstance = true;
 
             // Push the mixin into the default component.
             matched.components.default.mixins.push(mixin(Nova, Vue));

@@ -213,6 +213,10 @@ Nova.booting(function (Vue, router, store) {
     });
 
     Nova.request().interceptors.response.use(function (response) {
+        if (!isWizardInstance) {
+            isWizardInstance = !!response.headers['wizard-session-id'];
+        }
+
         if (isWizardInstance) {
             Nova.$emit('nova.wizard.response', response);
         }
@@ -248,9 +252,6 @@ Nova.booting(function (Vue, router, store) {
                     return originalData;
                 });
             }
-
-            // If we make it to this point, we know its a wizard instance.
-            isWizardInstance = true;
 
             // Push the mixin into the default component.
             matched.components.default.mixins.push(Object(__WEBPACK_IMPORTED_MODULE_0__mixin__["a" /* default */])(Nova, Vue));
@@ -432,7 +433,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
                     parent: this,
                     propsData: {
                         classes: 'ml-3',
-                        label: !this.lastStep() ? 'Next Step' : 'Finish & Close'
+                        label: this.__(!this.lastStep() ? 'Next Step' : 'Finish & Close')
                     }
                 });
 
@@ -620,7 +621,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
                     propsData: {
                         classes: 'ml-3',
                         type: 'button',
-                        label: 'Prev Step'
+                        label: this.__('Prev Step')
                     }
                 });
 
@@ -752,7 +753,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
                                     return this.submitMultiStepForm();
 
                                 case 12:
-                                    _context6.next = 17;
+                                    _context6.next = 18;
                                     break;
 
                                 case 14:
@@ -760,12 +761,13 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
                                     _context6.t0 = _context6['catch'](3);
 
                                     this.validateRequestFailed(_context6.t0);
+                                    this.focusOnFirstError(_context6.t0);
 
-                                case 17:
+                                case 18:
 
                                     this.submittedViaNextButton = false;
 
-                                case 18:
+                                case 19:
                                 case 'end':
                                     return _context6.stop();
                             }
@@ -782,7 +784,12 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
             validateFormData: function validateFormData() {
                 var _this7 = this;
 
-                return _.tap(this.formData[this.currentStep] = new FormData(), function (formData) {
+                var formData = this.formData[this.currentStep] = new FormData();
+
+                formData.set('editing', true);
+                formData.set('editMode', this.resourceId ? 'update' : 'create');
+
+                return _.tap(formData, function (formData) {
                     _.each(_this7.subject.fields, function (field) {
                         return field.fill(formData);
                     });
@@ -29316,61 +29323,65 @@ var render = function() {
   var _vm = this
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
-  return _c("div", { staticClass: "flex items-center justify-between" }, [
-    _c(
-      "div",
-      { staticClass: "progress-bar" },
-      _vm._l(_vm.steps, function(step, i) {
-        return _c(
-          "button",
-          {
-            key: i,
-            class: { active: _vm.currentStep >= i + 1 },
-            attrs: { type: "button" },
-            on: {
-              click: function($event) {
-                return _vm.$emit("click", i + 1)
-              }
-            }
-          },
-          [
-            _c("span", { staticClass: "text-truncate" }, [
-              _vm._v(_vm._s(step.name))
-            ])
-          ]
-        )
-      }),
-      0
-    ),
-    _vm._v(" "),
-    _c(
-      "div",
-      [
+  return _vm.steps.length > 1
+    ? _c("div", { staticClass: "flex items-center justify-between" }, [
         _c(
-          "progress-button",
-          {
-            staticClass: "mb-3",
-            attrs: {
-              type: "button",
-              disabled: _vm.processing,
-              processing: _vm.processing
-            },
-            nativeOn: {
-              click: function($event) {
-                return _vm.$emit("finish")
-              }
-            }
-          },
-          [
-            _vm._v(
-              "\n            " + _vm._s(_vm.__("Finish & Close")) + "\n        "
+          "div",
+          { staticClass: "progress-bar" },
+          _vm._l(_vm.steps, function(step, i) {
+            return _c(
+              "button",
+              {
+                key: i,
+                class: { active: _vm.currentStep >= i + 1 },
+                attrs: { type: "button" },
+                on: {
+                  click: function($event) {
+                    return _vm.$emit("click", i + 1)
+                  }
+                }
+              },
+              [
+                _c("span", { staticClass: "text-truncate" }, [
+                  _vm._v(_vm._s(step.name))
+                ])
+              ]
             )
-          ]
+          }),
+          0
+        ),
+        _vm._v(" "),
+        _c(
+          "div",
+          [
+            _c(
+              "progress-button",
+              {
+                staticClass: "mb-3",
+                attrs: {
+                  type: "button",
+                  disabled: _vm.processing,
+                  processing: _vm.processing
+                },
+                nativeOn: {
+                  click: function($event) {
+                    return _vm.$emit("finish")
+                  }
+                }
+              },
+              [
+                _vm._v(
+                  "\n            " +
+                    _vm._s(_vm.__("Finish & Close")) +
+                    "\n        "
+                )
+              ]
+            )
+          ],
+          1
         )
-      ],
-      1
-    )
-  ])
+      ])
+    : _vm._e()
 }
 var staticRenderFns = []
 render._withStripped = true
