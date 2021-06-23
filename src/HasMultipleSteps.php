@@ -6,15 +6,12 @@ use Actengage\Wizard\Http\Controllers\FillStepController;
 use Actengage\Wizard\Http\Controllers\ValidateStepController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
-use Laravel\Nova\Contracts\ListableField;
 use Laravel\Nova\Fields\FieldCollection;
-use Laravel\Nova\Fields\ID;
 use Laravel\Nova\Http\Controllers\CreationFieldController;
 use Laravel\Nova\Http\Controllers\UpdateFieldController;
 use Laravel\Nova\Http\Requests\NovaRequest;
 use Laravel\Nova\Panel;
 use Laravel\Nova\ResourceTool;
-use Laravel\Nova\ResourceToolElement;
 
 trait HasMultipleSteps
 {
@@ -47,10 +44,10 @@ trait HasMultipleSteps
             case UpdateFieldController::class:
             case CreationFieldController::class:
             case FillStepController::class:
-            case ValidateStepController::class:     
+            case ValidateStepController::class:   
                 // Extract steps from the fields.
                 $steps = $this->extractSteps($request, $fields);
-        
+  
                 // Get the current step instance from the collection.
                 $step = $steps->get($this->currentStep($request) - 1);
         
@@ -145,9 +142,18 @@ trait HasMultipleSteps
         }        
         
         return $steps->filter(function(Step $step) use ($request) {
-            return !!$this->removeNonCreationFields(
-                $request, $step->fields()
-            )->count();
+            if($request->editing && $request->editMode == 'create') {
+                return !!$this->removeNonCreationFields(
+                    $request, $step->fields()
+                )->count();
+            }
+            else if($request->editing && $request->editMode == 'update') {
+                return !!$this->removeNonUpdateFields(
+                    $request, $step->fields()
+                )->count();
+            }
+
+            return true;
         })->values();
     }
 
@@ -187,6 +193,7 @@ trait HasMultipleSteps
         // Get the available steps from the fields.
         return $this->extractSteps($request, $fields);
     }
+    
     
     /**
      * Get the number of total steps for a resource.
