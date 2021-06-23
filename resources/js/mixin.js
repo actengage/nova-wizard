@@ -117,7 +117,9 @@ export default (Nova, Vue) => ({
                 parent: this,
                 propsData: {
                     classes: 'ml-3',
-                    label: !this.lastStep() ? 'Next Step' : 'Finish & Close'
+                    label: this.__(
+                        !this.lastStep() ? 'Next Step' : 'Finish & Close'
+                    )
                 }
             });
 
@@ -226,7 +228,7 @@ export default (Nova, Vue) => ({
                 propsData: {
                     classes: 'ml-3',
                     type: 'button',
-                    label: 'Prev Step'
+                    label: this.__('Prev Step')
                 }
             });
 
@@ -323,13 +325,19 @@ export default (Nova, Vue) => ({
             }
             catch (e) {
                 this.validateRequestFailed(e);
+                this.focusOnFirstError(e);
             }
 
             this.submittedViaNextButton = false;
         },
 
         validateFormData() {
-            return _.tap(this.formData[this.currentStep] = new FormData(), formData => {
+            const formData = this.formData[this.currentStep] = new FormData();
+            
+            formData.set('editing', true);
+            formData.set('editMode', this.resourceId ? 'update' : 'create');
+
+            return _.tap(formData, formData => {
                 _.each(this.subject.fields, field => field.fill(formData));
             });
         },
