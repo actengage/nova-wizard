@@ -58,4 +58,19 @@ class UploadedFile extends BaseUploadedFile implements JsonSerializable {
         return $this;
     }
 
+    /**
+     * Delete the uploaded file on a filesystem disk.
+     *
+     * @param  string  $path
+     * @return $this
+     */
+    public function delete($path)
+    {      
+        app('wizard.filesystem')->delete($path);
+
+        $this->diskPath = null;
+
+        return $this;
+    }
+
 }
