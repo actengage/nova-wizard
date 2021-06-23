@@ -179,6 +179,10 @@ class Session extends Model {
     {
         parent::boot();
 
+        parent::deleting(function($model) {
+            $model->data->files->map->delete();
+        });
+
         parent::saving(function($model) {
             $model->data->files
                 // Filter only the tmp files.
