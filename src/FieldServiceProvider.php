@@ -2,6 +2,7 @@
 
 namespace Actengage\Wizard;
 
+use Actengage\Wizard\Console\Commands\ClearExpiredSessions;
 use Actengage\Wizard\Http\Controllers\ValidateStepController;
 use Actengage\Wizard\Http\Middleware\AttachHeadersToResponse;
 use Actengage\Wizard\Http\Requests\ValidateStepRequest;
@@ -162,6 +163,10 @@ class FieldServiceProvider extends ServiceProvider
         if(!$this->app->runningInConsole()) {
             return;
         }
+
+        $this->commands([
+            ClearExpiredSessions::class
+        ]);
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         
