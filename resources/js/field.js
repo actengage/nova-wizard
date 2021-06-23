@@ -44,8 +44,10 @@ Nova.booting((Vue, router, store) => {
             }
         } = to;
 
-        // Make sure the wizard instance is always false.
-        isWizardInstance = false;
+        // Make sure the wizard instance is always false when the path changes.
+        if(to.path !== from.path) {
+            isWizardInstance = false;
+        }
 
         // Only add mixin if route has a resourceId, resourceName, and on first load
         if(resourceName && (name === 'create' || name === 'edit') && matched.components.default.mixins.indexOf(mixin) === -1) {

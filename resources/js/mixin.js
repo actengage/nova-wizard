@@ -349,7 +349,7 @@ export default (Nova, Vue) => ({
 
             const { data: { fields } } = await Nova.request().post(uri, formData);
                 
-            fields.forEach(field => {
+            _.each(fields, field => {
                 this.fieldData[field.attribute] = field;
             });
     
