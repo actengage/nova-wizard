@@ -179,10 +179,12 @@ class Session extends Model {
     {
         parent::boot();
 
+        // Delete the session directory on the disk
         parent::deleting(function($model) {
-            $model->data->files->map->delete();
+            app('wizard.filesystem')->deleteDirectory($model->id);
         });
 
+        // Save the uploaded files to the directory on the disk
         parent::saving(function($model) {
             $model->data->files
                 // Filter only the tmp files.

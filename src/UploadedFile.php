@@ -16,6 +16,16 @@ class UploadedFile extends BaseUploadedFile implements JsonSerializable {
     private $diskPath;
 
     /**
+     * Get the relative path on the disk.
+     */
+    public function diskPath()
+    {
+        return $this->diskPath ?? (
+            str_replace(app('wizard.filesystem')->path(null), '', $this->getPathname())
+        );
+    }
+
+    /**
      * Determine if the file is in the /tmp/files directory.
      * 
      * @return bool
@@ -32,12 +42,8 @@ class UploadedFile extends BaseUploadedFile implements JsonSerializable {
      */
     public function jsonSerialize()
     {
-        $diskPath = $this->diskPath ?? (
-            str_replace(app('wizard.filesystem')->path(null), '', $this->getPathname())
-        );
-
         return [
-            'disk_path' => $diskPath,
+            'disk_path' => $this->diskPath(),
             'original_name' => $this->getClientOriginalName(),
             'mime_type' => $this->getMimeType(),
             'error' => $this->getError()    
@@ -64,9 +70,9 @@ class UploadedFile extends BaseUploadedFile implements JsonSerializable {
      * @param  string  $path
      * @return $this
      */
-    public function delete($path)
+    public function delete()
     {      
-        app('wizard.filesystem')->delete($path);
+        app('wizard.filesystem')->delete($this->diskPath());
 
         $this->diskPath = null;
 

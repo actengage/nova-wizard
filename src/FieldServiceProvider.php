@@ -59,9 +59,9 @@ class FieldServiceProvider extends ServiceProvider
     public function register()
     {
         $this->registerWizardSession();
+        $this->registerFilesystemDisk();
 
         Nova::booted(function($event) {
-            $this->registerFilesystemDisk();
             $this->registerRoutes();
 
             Nova::serving(function() {
