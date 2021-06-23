@@ -89,6 +89,8 @@ class FieldServiceProvider extends ServiceProvider
         }
 
         Route::middleware(['nova'])
+            ->prefix('nova-vendor/wizard')
+            ->namespace('\\Actengage\\Wizard\\Http\\Controllers')
             ->group(__DIR__.'/../routes/api.php');
     }
 
