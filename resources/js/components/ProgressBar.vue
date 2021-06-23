@@ -1,5 +1,5 @@
 <template>
-    <div class="flex items-center justify-between">
+    <div v-if="steps.length > 1" class="flex items-center justify-between">
         <div class="progress-bar">
             <button
                 v-for="(step, i) in steps"
