@@ -14,14 +14,15 @@ export default (Nova, Vue) => ({
             currentStep: null,
             events: [],
             fillComponent: null,
+            filled: false,
             formData: {},
             fieldData: {},
-            sessionId: null,
-            steps: null,
             nextButton: null,
             prevButton: null,
             progressBar: null,
             saveChangesButton: null,
+            sessionId: null,
+            steps: null,
             subject: null,
             submittedViaNextButton: false,
             totalSteps: null
@@ -30,10 +31,12 @@ export default (Nova, Vue) => ({
 
     watch: {
 
-        steps(value, oldValue) {
+        async steps(value, oldValue) {
             if(!oldValue && value) {
-                this.createFillComponent(value);
-                this.fillComponent.fill(this.formData);                
+                await this.fillComponent.fill(value, this.formData);
+
+                this.filled = true;
+                this.attemptToInitialize();
             }
         },
 
@@ -45,7 +48,6 @@ export default (Nova, Vue) => ({
                     });
                 }
             });
-
         },
 
         submittedViaNextButton(value) {
@@ -66,7 +68,7 @@ export default (Nova, Vue) => ({
 
         this.subject.loading = true;
         this.nextButton.label = this.lastStep() && 'Finish';
-        this.prevButton.disabled = parseInt(step) === 1;
+        this.prevButton.disabled = parseInt(step || 0) === 1;
     
         await this.subject.getFields();
     },
@@ -89,20 +91,18 @@ export default (Nova, Vue) => ({
             }, formData);
         },
 
-        createFillComponent(steps) {                    
+        createFillComponent() {
             this.fillComponent = new (Vue.extend(FillFormFields))({
                 parent: this,
                 propsData: {
-                    steps,
                     resourceName: this.resourceName,
                     resourceId: this.resourceId,
                     viaResource: this.viaResource,
                     viaResourceId: this.viaResourceId,
                     viaRelationship: this.viaRelationship,
+                    Vue
                 }
             });
-
-            this.fillComponent.$mount();
 
             return this.fillComponent;
         },
@@ -165,7 +165,7 @@ export default (Nova, Vue) => ({
                 this.$root.$refs.loading.finish();
             });
 
-            this.progressBar.$on('finish', async() => {
+            this.progressBar.$on('finish', async(stop) => {
                 this.$root.$refs.loading.start();
                 this.progressBar.processing = true;
 
@@ -174,6 +174,8 @@ export default (Nova, Vue) => ({
                     await this.submitMultiStepForm();
                 }
                 catch (e) {
+                    stop();
+                    
                     this.validateRequestFailed(e);
                     this.focusOnFirstError(e);
                 }
@@ -260,7 +262,7 @@ export default (Nova, Vue) => ({
         },
 
         focusOnFirstError(e) {
-            if(e.response && e.response.data) {
+            if(e.response && e.response.data && e.response.data.errors) {
                 const entries = Object.entries(e.response.data.errors);
 
                 if(entries.length) {
@@ -269,6 +271,7 @@ export default (Nova, Vue) => ({
                     const step = this.steps.indexOf(_.find(this.steps, step => {
                         return !!_.find(step.fields, ({ attribute }) => key === attribute);
                     })) + 1;
+
 
                     if(step && this.currentStep !== step) {
                         this.$router.push({
@@ -283,6 +286,12 @@ export default (Nova, Vue) => ({
             Array.from(this.$parent.$el.querySelectorAll('button'))
                 .filter(child => child !== this.$el)
                 .forEach(el => el.style.display = 'none');
+        },
+
+        attemptToInitialize() {
+            if(this.subject && !this.subject.loading && this.filled) {
+                this.initialize();
+            }
         },
 
         initialize() {
@@ -432,6 +441,8 @@ export default (Nova, Vue) => ({
     },
 
     created() {
+        this.createFillComponent();
+
         this.on('nova.wizard.request', config => {
             if(this.sessionId) {
                 config.headers['wizard-session-id'] = this.sessionId;
@@ -440,25 +451,27 @@ export default (Nova, Vue) => ({
 
         // These events are broken apart to be executed in specific orders.
         this.once('nova.wizard.response', () => {
-            this.subject = this.$children[0]
-                && this.$children[0].submitViaCreateResource
-                ? this.$children[0]
+            this.subject = this.$children[1] && this.$children[1].submitViaCreateResource
+                ? this.$children[1]
                 : this;
 
             this.subject.createResourceFormData = () => this.getFormData();
             this.subject.submitViaCreateResource = async(e) => this.submitViaNextButton(e);
             this.subject.submitViaUpdateResource = async(e) => this.submitViaNextButton(e);
-            this.resourceInformation = this.subject.resourceInformation;       
+            this.resourceInformation = this.subject.resourceInformation;
 
-            this.$watch(() => this.subject.loading, () => {
-                this.initialize();
+            this.$watch(() => this.subject.loading, (value) => {
+                if(!value) {
+                    this.attemptToInitialize();
+                }
             });
+            
         });
 
         this.on('nova.wizard.response', ({ data: { steps }, headers }) => {
             if(headers['wizard-session-id']) {
                 this.sessionId = headers['wizard-session-id'];
-                this.currentStep = Number(headers['wizard-current-step']);
+                this.currentStep = Number(headers['wizard-current-step'] || 1);
                 this.totalSteps = Number(headers['wizard-total-steps']);
 
 

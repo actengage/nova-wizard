@@ -133,8 +133,14 @@ class Session extends Model {
      */
     public function restore(Request $request)
     {
-        if(!$request->headers->has(config('wizard.session.header'))) {
-            $request->headers->set(config('wizard.session.header'), $this->id);
+        $key = config('wizard.session.header');
+
+        if($input = $request->input($key)) {
+            $request->headers->set($key, $input);
+        }
+
+        if(!$request->headers->has($key)) {
+            $request->headers->set($key, $this->id);
         }
 
         $this->data->restore($request);
@@ -146,15 +152,19 @@ class Session extends Model {
      * Restore the session into the request.
      * 
      * @param  \Illuminate\Http\Request  $request
-     * @return $this
+     * @return bool
      */
     public function restoreIfExists(Request $request)
     {
-        if($request->headers->has(config('wizard.session.header'))) {
+        $key = config('wizard.session.header');
+
+        if($request->has($key) || $request->headers->has($key)) {
             $this->data->restore($request);
+
+            return true;
         }
 
-        return $this;
+        return false;
     }
 
     /**

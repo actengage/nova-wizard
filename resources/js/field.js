@@ -5,18 +5,21 @@ Nova.booting((Vue, router, store) => {
     
     // Add a request interceptor to append to current step to the request
     Nova.request().interceptors.request.use(function(config) {
-        const step = parseInt(router.currentRoute.query.step || 1);
-
-        config.step = step;
+        const params = new URLSearchParams(window.location.search);
+        const step = config.step = router.currentRoute.query.step;
+    
+        if(params.get('wizard-session-id')) {
+            config.headers['wizard-session-id'] = params.get('wizard-session-id');
+        }
 
         if(config.method === 'get') {
-            config.params = Object.assign(config.params || {}, { step });
+            config.params = Object.assign(config.params || {}, { step })
         }
-        else if(config.data) {
+        else if(config.data && step) {
             config.data.set('step', step);
-        }
+        }      
     
-        if(isWizardInstance) {
+        if(isWizardInstance) {            
             Nova.$emit('nova.wizard.request', config);
         }
         

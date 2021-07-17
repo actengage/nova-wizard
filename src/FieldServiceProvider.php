@@ -30,21 +30,15 @@ class FieldServiceProvider extends ServiceProvider
      * @return void
      */
     public function boot(Kernel $kernel)
-    {       
-        $this->app->afterResolving(NovaRequest::class, function ($request, $app) {
-            $controller = app(Router::class)
-                ->getRoutes()
-                ->match($request)
-                ->getController();
+    {     
+        /*
+        $request = Request::createFromBase(request());
 
-            switch(get_class($controller)) {
-                case UpdateFieldController::class:
-                case CreationFieldController::class:
-                case FillStepController::class:
-                case ValidateStepController::class:
-                    app('wizard.session')->restore($request);        
-            }
-        });
+        if(app('wizard.session')->restoreIfExists($request)) {
+            request()->query = $request->query;
+            request()->files = $request->files;
+        }
+        */
 
         $kernel->pushMiddleware(AttachHeadersToResponse::class);
 
@@ -58,10 +52,10 @@ class FieldServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->registerWizardSession();
         $this->registerFilesystemDisk();
 
         Nova::booted(function($event) {
+            $this->registerWizardSession();
             $this->registerRoutes();
 
             Nova::serving(function() {

@@ -6,7 +6,7 @@
                 :key="i"
                 type="button"
                 :class="{active: currentStep >= i + 1}"
-                @click="$emit('click', i + 1)">
+                @click="() => currentStep !== i + 1 ? $emit('click', i + 1) : null">
                 <span class="text-truncate">{{ step.name }}</span>
             </button>
         </div>
@@ -17,7 +17,7 @@
                 class="mb-3"
                 :disabled="processing"
                 :processing="processing"
-                @click.native="$emit('finish')">
+                @click.native="$emit('finish', () => processing = false)">
                 {{ __('Finish & Close') }}
             </progress-button>
         </div>
