@@ -9,7 +9,7 @@ Just implement the trait, define the steps and the plugin does the rest.
 ## Installation
 
 ```
-composer install actengage/nova-wizard
+composer require actengage/nova-wizard
 ```
 
 ## Useage
