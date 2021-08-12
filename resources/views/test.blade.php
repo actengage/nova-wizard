@@ -1,4 +1,4 @@
-<html
+<html>
 <body>
     <form method="post" action="#" enctype="multipart/form-data">
         @csrf
