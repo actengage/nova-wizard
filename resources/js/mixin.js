@@ -285,7 +285,11 @@ export default (Nova, Vue) => ({
         hideDefaultSubmitButtons() {
             Array.from(this.$parent.$el.querySelectorAll('button'))
                 .filter(child => child !== this.$el)
-                .forEach(el => el.style.display = 'none');
+                .forEach(el => {
+                    if (el.hasAttribute('dusk')) {
+                        el.style.display = 'none'
+                    }
+                });
         },
 
         attemptToInitialize() {
