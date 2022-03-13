@@ -306,8 +306,13 @@ export default (Nova, Vue) => ({
                     this.createSaveChangesButton();
                 }
 
-                this.createPrevButton();
-                this.createNextButton();
+                // Here we check if resource update is disabled or not
+                if (this.resourceId && location.pathname.endsWith('edit')) {
+
+                } else {
+                    this.createPrevButton();
+                    this.createNextButton();
+                }
                 this.createProgressBar();
             }
         },
