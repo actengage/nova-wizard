@@ -88,6 +88,15 @@ class User extends Resource
 }
 ```
 
+## Sometimes, you don't want to use wizard for updating resource
+```php
+# You can disable wizard by adding this function on resource
+public function dontUseWizardForUpdate() 
+{
+    return true;
+}
+```
+
 ## Display Steps as Panels
 
 Sometimes you want your steps to be displayed as panels without having to 

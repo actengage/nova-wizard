@@ -40,8 +40,9 @@ trait HasMultipleSteps
             ->match($request)
             ->getController();
 
-        switch(get_class($controller)) {
-            case UpdateFieldController::class:
+        $controller_type = get_class($controller);
+
+        switch($controller_type) {
             case CreationFieldController::class:
             case FillStepController::class:
             case ValidateStepController::class:   
@@ -52,6 +53,16 @@ trait HasMultipleSteps
                 $step = $steps->get($this->currentStep($request) - 1);
         
                 return $step->fields();
+        }
+
+        if (! $this->dontUseWizardForUpdate() && $controller_type == UpdateFieldController::class) {
+            // Extract steps from the fields.
+            $steps = $this->extractSteps($request, $fields);
+
+            // Get the current step instance from the collection.
+            $step = $steps->get($this->currentStep($request) - 1);
+    
+            return $step->fields();
         }
         
         return $this->extractFields($fields);

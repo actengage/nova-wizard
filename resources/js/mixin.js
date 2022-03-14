@@ -285,7 +285,11 @@ export default (Nova, Vue) => ({
         hideDefaultSubmitButtons() {
             Array.from(this.$parent.$el.querySelectorAll('button'))
                 .filter(child => child !== this.$el)
-                .forEach(el => el.style.display = 'none');
+                .forEach(el => {
+                    if (el.hasAttribute('dusk')) {
+                        el.style.display = 'none'
+                    }
+                });
         },
 
         attemptToInitialize() {
@@ -302,8 +306,13 @@ export default (Nova, Vue) => ({
                     this.createSaveChangesButton();
                 }
 
-                this.createPrevButton();
-                this.createNextButton();
+                // Here we check if resource update is disabled or not
+                if (this.resourceId && location.pathname.endsWith('edit')) {
+
+                } else {
+                    this.createPrevButton();
+                    this.createNextButton();
+                }
                 this.createProgressBar();
             }
         },
